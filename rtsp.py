@@ -3,17 +3,21 @@
         Petrov D.M. GROUP: CIT-26b
     :Version: 0.0.1 of 2018/12/15
     :platform: Unix, Windows
-
+    |
+    |
+    |
 """
 import socket
 from datetime import datetime
 import bitstring
 import base64
 
+
+
+
 def SessionNum(session):
     """
     :param session: String  with number of session.
-
     >>> SessionNum(session='Session: 9562D061; timeout=60')
     9562D061
 
@@ -29,10 +33,26 @@ def SessionNum(session):
 
 def SessionFrame(fr):
     """
-
     :param fr: String frame with part of photo.
 
-
+    >>> P = frame[2]
+    P: False
+    >>> X = frame[3]
+    X: False
+    >>>version = frame[0:2].uint
+    Version: 2  CC(size sender): 0
+    >>> CC = frame[4:8].uint  # size sender
+    CC(size sender): 0
+    >>> M = frame[8]
+    M: False
+    >>> PT = frame[9:16].uint  # type encoding name
+    PT: 96
+    >>> SN = frame[16:32].uint  # number of packege
+    NUMBER Package: 51196
+    >>> TimeMarker = frame[32:64].uint
+    TimeMarker: 3395095627
+    >>> SSRC = frame[64:96]
+    SSRC: 0x90ea0a57
 
     :return:  data with part of photo.
     """
@@ -61,22 +81,11 @@ def SessionFrame(fr):
     TypeNAL = frame[107:112].uint
     # print(f"Version: {version} X: {X} CC(size sender): {CC}")
     # print(f"P: {P} M: {M} PT: {PT} ")
-    # if PT >= 96 | PT <= 127:
-    #     print('Dynamic encoding name.')
     # print(f"NUMBER Package: {SN}")
     # print(f"TimeMarker: {TimeMarker}")
     # print(f"SSRC: {SSRC}")
     # print(f"F: {F}")
     # print(f"NRI: {NRI}")
-
-    # if TypeFrame == 28:
-    #     print("Type: FU-A")
-    # else:
-    #     print("OTHER: ", TypeFrame)
-
-    # if TypeFrame == 29:
-    #     print("Type: FU-B")
-
     if TypeFrame == 7:
         # print("Type: SPS")
         return start_bytes2 + fr[12:]
@@ -114,28 +123,46 @@ def SessionFrame(fr):
 
 
 client_port = [40700, 40701]
+"""
+    client port for udp stream
+"""
+
 host = '10.168.0.186'
 ip = '10.168.0.125'
 SPS = b'Z0IAKeNQFAe2AtwEBAaQeJEV'
+"""Data in 64-bit type."""
 PPD = b'aM48gA=='
+"""Data in 64-bit type."""
 
 Base16SPS = base64.b64decode(SPS)
+"""Data in 64-bit type. The SPS NAL unit contains parameters that apply to a series of consecutive coded video pictures, referred to as a “coded video sequence” in the h.264 standard"""
 Base16PPS = base64.b64decode(PPD)
+"""Data in 64-bit type. The PPS NAL unit contains parameters that apply to the decoding of one or more individual pictures inside a coded video sequence."""
 
 messageOne = "OPTIONS rtsp://"+ host +"/axis-media/media.amp " \
              "RTSP/1.0\r\nCSeq: 1\r\nUser-Agent: RTSPClient\r\n\r\n"
 
+"""The OPTIONS method requests information about arguments available users."""
+
 messageTwo = "DESCRIBE rtsp://"+ host +"/axis-media/media.amp " \
              "RTSP/1.0\r\nCSeq: 2\r\nUser-Agent: RTSPClient\r\nAccept: application/sdp\r\n\r\n"
+
+"""The DESCRIBE method is used to retrieve the description of a media data from a server."""
 
 messageThree = "SETUP rtsp://"+ host +"/axis-media/media.amp/trackID=1 " \
                "RTSP/1.0\r\nCSeq: 3\r\nUser-Agent: RTSPClient\r\n" \
                "Transport: RTP/AVP;unicast;client_port=" + str(client_port[0]) + "-" + str(client_port[1]) + "\r\n\r\n"
+"""The SETUP request for a URI specifies the transport mechanism to be used for the streamed media."""
 FileName = 'MyStream.h264'
+"""File name for stream."""
 
 size = 2048
+"""Size data for read."""
 port = 554
+"""TCP port."""
 address = (host, port)
+"""Address for TCP Stream."""
+
 
 
 """Start TCP SERVER"""
@@ -151,7 +178,7 @@ data = clientTCP.recv(size)
 print(messageOne)
 print(data.decode('utf-8'))
 
-"""DESCRIBE rtsp://10.168.0.186/axis-media/media.amp"""
+'''DESCRIBE rtsp://10.168.0.186/axis-media/media.amp'''
 
 clientTCP.send(bytes(messageTwo, 'utf-8'))
 data = clientTCP.recv(size)
@@ -172,8 +199,16 @@ messageFour = "PLAY rtsp://"+ host +"/axis-media/media.amp " \
               "RTSP/1.0\r\nCSeq: 4\r\nUser-Agent: " \
               "RTSPClient\r\nSession: " + NumSession + "\r\nRange: npt=0.000-\r\n\r\n"
 
-messageFive = "TEARDOWN rtsp://"+ host +"/axis-media/media.amp RTSP/1.0\r\n" \
+"""The PLAY method tells the server to start sending data
+ via the mechanism specified in SETUP and which part of the media should be played out."""
+
+messageFive = "TEARDOWN rtsp://" + host + "/axis-media/media.amp RTSP/1.0\r\n" \
               "CSeq: 5\r\nSession: " + NumSession + "\r\nUser-Agent: RTSPClient\r\n\r\n"
+
+"""The TEARDOWN client-to-server request stops the stream
+ delivery for the given URI, freeing the resources associated with it."""
+
+
 
 """Start UDP SERVER"""
 print("Starting the serverUDP: ", datetime.now())
